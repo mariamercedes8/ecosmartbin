@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Bin } from '../../model/bin.model';
@@ -12,7 +12,11 @@ import { BinService } from '../../services/bin.service';
     <div style="max-width: 720px; margin: 2rem auto; font-family: sans-serif;">
       <h2>EcoSmartBin - Gestión de Contenedores</h2>
 
-      <form (ngSubmit)="guardarBin()" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      <!-- Formulario de registro y edición -->
+      <form
+        (ngSubmit)="guardarBin()"
+        style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;"
+      >
         <input
           type="text"
           [(ngModel)]="binActual.ubicacion"
@@ -32,12 +36,20 @@ import { BinService } from '../../services/bin.service';
           <option value="Inactivo">Inactivo</option>
           <option value="Mantenimiento">Mantenimiento</option>
         </select>
-        <button type="submit">{{ editandoId ? 'Actualizar' : 'Registrar' }}</button>
-        <button *ngIf="editandoId" type="button" (click)="limpiarFormulario()">Cancelar</button>
+
+        <button type="submit">
+          {{ editandoId ? 'Actualizar' : 'Registrar' }}
+        </button>
+
+        <button *ngIf="editandoId" type="button" (click)="limpiarFormulario()">
+          Cancelar
+        </button>
       </form>
 
+      <!-- Mensaje de error -->
       <p *ngIf="mensajeError" style="color: #b00020;">{{ mensajeError }}</p>
 
+      <!-- Tabla de contenedores -->
       <table border="1" cellpadding="8" cellspacing="0" width="100%">
         <thead>
           <tr>
@@ -58,7 +70,9 @@ import { BinService } from '../../services/bin.service';
             </td>
           </tr>
           <tr *ngIf="bins.length === 0">
-            <td colspan="4" style="text-align: center;">No hay contenedores registrados aún.</td>
+            <td colspan="4" style="text-align: center;">
+              No hay contenedores registrados aún.
+            </td>
           </tr>
         </tbody>
       </table>
@@ -67,25 +81,31 @@ import { BinService } from '../../services/bin.service';
 })
 export class BinManagerComponent implements OnInit {
   private readonly binService = inject(BinService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   bins: Bin[] = [];
   binActual: Bin = this.nuevoBinVacio();
   editandoId: string | null = null;
   mensajeError = '';
 
+  // Ciclo de vida
   ngOnInit(): void {
     this.cargarBins();
   }
 
-  nuevoBinVacio(): Bin {
-    return { ubicacion: '', nivelLlenado: '', estado: 'Activo' };
-  }
-
+  // Consultas y mutaciones (CRUD)
   cargarBins(): void {
     this.mensajeError = '';
+
     this.binService.getBins().subscribe({
-      next: (data) => (this.bins = data),
-      error: () => (this.mensajeError = 'No se pudo cargar la lista de contenedores desde el backend.')
+      next: (data) => {
+        this.bins = Array.isArray(data) ? data : [];
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.mensajeError = 'No se pudo cargar la lista de contenedores desde el backend.';
+        this.cdr.detectChanges();
+      }
     });
   }
 
@@ -93,6 +113,7 @@ export class BinManagerComponent implements OnInit {
     if (!this.binActual.ubicacion.trim() || !this.binActual.nivelLlenado.trim()) {
       return;
     }
+
     this.mensajeError = '';
 
     if (this.editandoId) {
@@ -101,17 +122,24 @@ export class BinManagerComponent implements OnInit {
           this.limpiarFormulario();
           this.cargarBins();
         },
-        error: () => (this.mensajeError = 'Error al actualizar el contenedor.')
+        error: () => {
+          this.mensajeError = 'Error al actualizar el contenedor.';
+          this.cdr.detectChanges();
+        }
       });
-    } else {
-      this.binService.createBin(this.binActual).subscribe({
-        next: () => {
-          this.limpiarFormulario();
-          this.cargarBins();
-        },
-        error: () => (this.mensajeError = 'Error al registrar el contenedor.')
-      });
+      return;
     }
+
+    this.binService.createBin(this.binActual).subscribe({
+      next: () => {
+        this.limpiarFormulario();
+        this.cargarBins();
+      },
+      error: () => {
+        this.mensajeError = 'Error al registrar el contenedor.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   editarBin(bin: Bin): void {
@@ -125,15 +153,26 @@ export class BinManagerComponent implements OnInit {
 
   eliminarBin(id?: string): void {
     if (!id) return;
+
     this.mensajeError = '';
+
     this.binService.deleteBin(id).subscribe({
       next: () => this.cargarBins(),
-      error: () => (this.mensajeError = 'Error al eliminar el contenedor.')
+      error: () => {
+        this.mensajeError = 'Error al eliminar el contenedor.';
+        this.cdr.detectChanges();
+      }
     });
   }
 
+  // Utilidades del formulario
   limpiarFormulario(): void {
     this.editandoId = null;
     this.binActual = this.nuevoBinVacio();
+    this.cdr.detectChanges();
+  }
+
+  private nuevoBinVacio(): Bin {
+    return { ubicacion: '', nivelLlenado: '', estado: 'Activo' };
   }
 }

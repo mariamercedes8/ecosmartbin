@@ -8,7 +8,7 @@ import { Bin } from '../model/bin.model';
 })
 export class BinService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:4000/api/bins';
+  private readonly apiUrl = 'https://ecosmartbin-nine.vercel.app/api/bins';
 
   getBins(): Observable<Bin[]> {
     return this.http.get<Bin[]>(this.apiUrl);
