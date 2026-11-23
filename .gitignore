@@ -9,3 +9,6 @@ nbproject/
 
 node_modules/
 .env
+n.angular/ndist/
+n.angular/
+dist/
